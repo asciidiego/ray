@@ -53,4 +53,6 @@ class vec3 {
 using point3 = vec3;
 using color = vec3;
 
+// TODO: Utility functions
+
 #endif
