@@ -1,73 +1,75 @@
-#include "vec3.h"
+#include "common.h"
+
 #include "color.h"
-#include "ray.h"
+#include "hittable_list.h"
 #include "sphere.h"
 
 #include <iostream>
 
-
-double hit_sphere(const point3& center, double radius, const ray& r) {
-	vec3 oc = r.origin() - center;
-	auto a 	= r.direction().length_squared();
-	auto half_b = dot(r.direction(), oc);
-	auto c	= dot(oc, oc) - radius * radius;
-	auto discriminant = half_b*half_b - a*c;
-	if (discriminant < 0) {
-		return -1.0;
-	} else {
-		// Only one side for now
-		return (-half_b - sqrt(discriminant) ) / a;
-	}
+double hit_sphere(const point3 &center, double radius, const ray &r) {
+  vec3 oc = r.origin() - center;
+  auto a = r.direction().length_squared();
+  auto half_b = dot(r.direction(), oc);
+  auto c = dot(oc, oc) - radius * radius;
+  auto discriminant = half_b * half_b - a * c;
+  if (discriminant < 0) {
+    return -1.0;
+  } else {
+    // Only one side for now
+    return (-half_b - sqrt(discriminant)) / a;
+  }
 }
 
-color ray_color(const ray& r) {
-	// Paint sphere normals
-	auto t = hit_sphere(point3(0, 0, -1), 0.5, r);
-	if (t > 0.0) {
-		vec3 N = normalize(r.at(t) - vec3(0,0,-1));
-		return 0.5 * color(N.x() + 1, N.y() + 1, N.z() + 1);
-	}
+color ray_color(const ray &r, const hittable &world) {
+  hit_record rec;
+  if (world.hit(r, 0, infinity, rec)) {
+    return 0.5 * (rec.normal + color(1, 1, 1));
+  }
 
-	// Create a blueish gradient that depends on Y-axis position of ray
-	vec3 unit_direction = normalize(r.direction());
-	t = 0.5 * (unit_direction.y() + 1.0);
-	return (1.0 - t) * color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
+  // Create a blueish gradient that depends on Y-axis position of ray
+  vec3 unit_direction = normalize(r.direction());
+  auto t = 0.5 * (unit_direction.y() + 1.0);
+  return (1.0 - t) * color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
 }
-
 
 int main() {
 
-	// Image
-	const auto aspect_ratio = 16.0 / 9.0;
-	const int image_width 	= 512;
-	const int image_height	= static_cast<int>(image_width / aspect_ratio);
+  // Image
+  const auto aspect_ratio = 16.0 / 9.0;
+  const int image_width = 512;
+  const int image_height = static_cast<int>(image_width / aspect_ratio);
 
-	// Camera
-	auto viewport_height 	= 2.0;
-	auto viewport_width  	= aspect_ratio * viewport_height;
-	auto focal_length 		= 1.0;
+  // World
+  hittable_list world;
+  world.add(make_shared<sphere>(point3(0, 0, -1), 0.5));
+  world.add(make_shared<sphere>(point3(0, -100.5, -1), 100));
 
-	auto origin 			= point3(0, 0, 0);
-	auto horizontal			= vec3(viewport_width, 0, 0);
-	auto vertical			= vec3(0, viewport_height, 0);
-	auto lower_left_corner	= origin - (horizontal / 2) - (vertical / 2) - vec3(0, 0, focal_length);
+  // Camera
+  auto viewport_height = 2.0;
+  auto viewport_width = aspect_ratio * viewport_height;
+  auto focal_length = 1.0;
 
-	// Render
+  auto origin = point3(0, 0, 0);
+  auto horizontal = vec3(viewport_width, 0, 0);
+  auto vertical = vec3(0, viewport_height, 0);
+  auto lower_left_corner =
+      origin - (horizontal / 2) - (vertical / 2) - vec3(0, 0, focal_length);
 
-	std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+  // Render
 
-	for (int i = image_height - 1; i >= 0; --i) {
-		std::cerr << "\rScanlines remaining: " << i << ' ' << std::flush;
-		for (int j = 0; j < image_width; ++j) {
-			auto u = double(j) / (image_width - 1);
-			auto v = double(i) / (image_height - 1);
+  std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
-			ray r(origin, lower_left_corner + u * horizontal + v * vertical - origin);
-			color pixel_color(ray_color(r));
-			write_color(std::cout, pixel_color);
-		}
-	}
+  for (int i = image_height - 1; i >= 0; --i) {
+    std::cerr << "\rScanlines remaining: " << i << ' ' << std::flush;
+    for (int j = 0; j < image_width; ++j) {
+      auto u = double(j) / (image_width - 1);
+      auto v = double(i) / (image_height - 1);
 
-	std::cerr << "\nDone.\n";
+      ray r(origin, lower_left_corner + u * horizontal + v * vertical - origin);
+      color pixel_color(ray_color(r, world));
+      write_color(std::cout, pixel_color);
+    }
+  }
+
+  std::cerr << "\nDone.\n";
 }
-
