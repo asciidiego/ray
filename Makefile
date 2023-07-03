@@ -11,8 +11,12 @@ DEPENDS := $(patsubst $(SRCDIR)/%.cc,$(BUILDDIR)/%.d,$(SOURCES))
 $(BUILDDIR)/$(TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-$(BUILDDIR)/%.o: $(SRCDIR)/%.cc
+$(BUILDDIR):
+	mkdir -p $(BUILDDIR)
+
+$(BUILDDIR)/%.o: $(SRCDIR)/%.cc | $(BUILDDIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 
 -include $(DEPENDS)
 
